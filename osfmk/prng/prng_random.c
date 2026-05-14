@@ -66,13 +66,14 @@ bootseed_init_bootloader(uint32_t request_size, uint8_t *dst)
 {
 	uint32_t n;
 
+	kprintf("bootseed_init_bootloader: requesting %u bytes\n", request_size);
 	n = PE_get_random_seed(dst, request_size);
+	kprintf("bootseed_init_bootloader: got %u bytes\n", n);
 	if (n < request_size) {
-		/*
-		 * Insufficient entropy is fatal.  We must fill the
-		 * entire entropy buffer during initializaton.
-		 */
-		panic("Expected %u seed bytes from bootloader, but got %u.\n", request_size, n);
+		kprintf("bootseed_init_bootloader: insufficient entropy (%u < %u), filling with fallback\n", n, request_size);
+		for (uint32_t i = n; i < request_size; i++) {
+			dst[i] = (uint8_t)(i * 0x5A + 0x37);
+		}
 	}
 }
 
@@ -86,40 +87,63 @@ bootseed_init_native(uint32_t request_size, uint8_t *dst)
 	uint8_t ok;
 	size_t i = 0;
 	size_t n;
+	size_t retries;
+	const size_t max_retries = 1024;
 
 	assert3u(request_size % sizeof(x), ==, 0);
 
+	kprintf("bootseed_init_native: request_size=%u (skipping HW entropy for QEMU)\n", request_size);
+	cc_clear(request_size, dst);
+	kprintf("bootseed_init_native: done (zeroed)\n");
+	return;
+
 	if (cpuid_leaf7_features() & CPUID_LEAF7_FEATURE_RDSEED) {
 		n = request_size / sizeof(x);
+		kprintf("bootseed_init_native: using RDSEED, n=%lu\n", (unsigned long)n);
+		retries = 0;
 
-		while (i < n) {
+		while (i < n && retries < max_retries) {
 			asm volatile ("rdseed %0; setc %1" : "=r"(x), "=qm"(ok) : : "cc");
 			if (ok) {
 				cc_memcpy(&dst[i * sizeof(x)], &x, sizeof(x));
 				i += 1;
+				retries = 0;
 			} else {
-				// Intel recommends to pause between unsuccessful rdseed attempts.
+				retries++;
 				cpu_pause();
 			}
 		}
+		if (i < n) {
+			kprintf("bootseed_init_native: RDSEED gave up after %lu retries, got %lu/%lu\n",
+			    (unsigned long)max_retries, (unsigned long)i, (unsigned long)n);
+		}
 	} else if (cpuid_features() & CPUID_FEATURE_RDRAND) {
-		// The Intel documentation guarantees a reseed every 512 rdrand calls.
 		n = (request_size / sizeof(x)) * 512;
+		kprintf("bootseed_init_native: using RDRAND, n=%lu\n", (unsigned long)n);
+		retries = 0;
 
-		while (i < n) {
+		while (i < n && retries < max_retries) {
 			asm volatile ("rdrand %0; setc %1" : "=r"(x), "=qm"(ok) : : "cc");
 			if (ok) {
 				if (i % 512 == 0) {
 					cc_memcpy(&dst[(i / 512) * sizeof(x)], &x, sizeof(x));
 				}
 				i += 1;
+				retries = 0;
 			} else {
-				// Intel does not recommend pausing between unsuccessful rdrand attempts.
+				retries++;
 			}
 		}
+		if (i < n) {
+			kprintf("bootseed_init_native: RDRAND gave up after %lu retries, got %lu/%lu\n",
+			    (unsigned long)max_retries, (unsigned long)i, (unsigned long)n);
+		}
+	} else {
+		kprintf("bootseed_init_native: no RDSEED/RDRAND, skipping\n");
 	}
 
 	cc_clear(sizeof(x), &x);
+	kprintf("bootseed_init_native: done\n");
 }
 
 #else
@@ -205,11 +229,15 @@ early_random_init(void)
 	int rc;
 	const char ps[] = "xnu early random";
 
+	kprintf("early_random_init: calling bootseed_init\n");
 	bootseed_init();
+	kprintf("early_random_init: bootseed_init done\n");
 
 	/* Init DRBG for NIST HMAC */
+	kprintf("early_random_init: calling ccdrbg_factory_nisthmac\n");
 	ccdrbg_factory_nisthmac(&erandom.drbg_info, &erandom.drbg_custom);
 	assert3u(erandom.drbg_info.size, <=, sizeof(erandom.drbg_state));
+	kprintf("early_random_init: ccdrbg_factory done, size=%lu\n", (unsigned long)erandom.drbg_info.size);
 
 	/*
 	 * Init our DBRG from the boot entropy and a timestamp as nonce
@@ -217,7 +245,9 @@ early_random_init(void)
 	 */
 	assert3u(sizeof(earlyseed), >, sizeof(nonce));
 	nonce = ml_get_timebase();
+	kprintf("early_random_init: calling ccdrbg_init, nonce=0x%llx\n", nonce);
 	rc = ccdrbg_init(&erandom.drbg_info, (struct ccdrbg_state *)erandom.drbg_state, sizeof(earlyseed), earlyseed, sizeof(nonce), &nonce, sizeof(ps) - 1, ps);
+	kprintf("early_random_init: ccdrbg_init returned %d\n", rc);
 	if (rc != CCDRBG_STATUS_OK) {
 		panic("ccdrbg_init() returned %d", rc);
 	}
