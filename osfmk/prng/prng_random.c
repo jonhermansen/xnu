@@ -400,8 +400,12 @@ random_cpu_init(int cpu)
 __mockable void
 read_random(void * buffer, u_int numbytes)
 {
-	prng_funcs.refresh(prng_ctx);
-	read_random_generate(buffer, numbytes);
+	if (__probable(prng_ready)) {
+		prng_funcs.refresh(prng_ctx);
+		read_random_generate(buffer, numbytes);
+	} else {
+		read_erandom(buffer, numbytes);
+	}
 }
 
 static void
