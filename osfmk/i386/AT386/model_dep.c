@@ -441,6 +441,8 @@ efi_init(void)
 		    args->efiRuntimeServicesPageCount);
 		DPRINTF("           efiRuntimeServicesVirtualPageStart: 0x%016llx\n",
 		    args->efiRuntimeServicesVirtualPageStart);
+		int no_efi_rt = 0;
+		PE_parse_boot_argn("no_efi_runtime", &no_efi_rt, sizeof(no_efi_rt));
 		mptr = (EfiMemoryRange *)ml_static_ptovirt(args->MemoryMap);
 		for (i = 0; i < mcount; i++, mptr = (EfiMemoryRange *)(((vm_offset_t)mptr) + msize)) {
 			if (((mptr->Attribute & EFI_MEMORY_RUNTIME) == EFI_MEMORY_RUNTIME)) {
@@ -457,6 +459,9 @@ efi_init(void)
 				    (void *) (uintptr_t) mptr->VirtualStart,
 				    (void *) vm_addr,
 				    (void *) vm_size);
+				if (no_efi_rt) {
+					continue;
+				}
 				pmap_map_bd(vm_addr, phys_addr, phys_addr + round_page(vm_size),
 				    (mptr->Type == kEfiRuntimeServicesCode) ? VM_PROT_READ | VM_PROT_EXECUTE : VM_PROT_READ | VM_PROT_WRITE,
 				    (mptr->Type == EfiMemoryMappedIO)       ? VM_WIMG_IO   : VM_WIMG_USE_DEFAULT);
