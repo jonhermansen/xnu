@@ -241,6 +241,12 @@ tsc_init(void)
 			busFreq = BASE_NHM_CLOCK_SOURCE;
 		}
 
+		if (tscGranularity == 0) {
+			kprintf("tsc_init: MSR_PLATFORM_INFO ratio is 0, assuming TSC == bus\n");
+			tscFreq = busFreq;
+			tscGranularity = 1;
+		}
+
 		break;
 	}
 	case CPUFAMILY_INTEL_PENRYN: {
