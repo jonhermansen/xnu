@@ -390,15 +390,20 @@ Idle_PTs_init(void)
 	uint64_t        rand64;
 	uint64_t        new_physmap_base, new_physmap_max;
 
+	DBG("Idle_PTs_init: NKPT=%d NPGPTD=%d physfree=%p\n", NKPT, NPGPTD, physfree);
+
 	/* Allocate the "idle" kernel page tables: */
 	KPTphys  = ALLOCPAGES(NKPT);            /* level 1 */
 	IdlePTD  = ALLOCPAGES(NPGPTD);          /* level 2 */
 	IdlePDPT = ALLOCPAGES(1);               /* level 3 */
 	IdlePML4 = ALLOCPAGES(1);               /* level 4 */
+	DBG("Idle_PTs_init: KPTphys=%p IdlePTD=%p IdlePDPT=%p IdlePML4=%p\n",
+	    KPTphys, IdlePTD, IdlePDPT, IdlePML4);
 
 	// Fill the lowest level with everything up to physfree
 	fillkpt(KPTphys,
 	    INTEL_PTE_WRITE, 0, 0, (int)(((uintptr_t)physfree) >> PAGE_SHIFT));
+	DBG("Idle_PTs_init: fillkpt L1 done (pages=%d)\n", (int)(((uintptr_t)physfree) >> PAGE_SHIFT));
 
 	/* IdlePTD */
 	fillkpt(IdlePTD,
@@ -411,6 +416,7 @@ Idle_PTs_init(void)
 	// IdlePML4 single entry for kernel space.
 	fillkpt(IdlePML4 + KERNEL_PML4_INDEX,
 	    INTEL_PTE_WRITE, (uintptr_t)ID_MAP_VTOP(IdlePDPT), 0, 1);
+	DBG("Idle_PTs_init: page tables filled\n");
 
 	postcode(VSTART_PHYSMAP_INIT);
 
@@ -419,10 +425,15 @@ Idle_PTs_init(void)
 	 * gsbase is initialized, so use the full 64-bit value to extract the
 	 * two 8-bit entropy values needed for address randomization.
 	 */
+	DBG("Idle_PTs_init: calling early_random\n");
 	rand64 = early_random();
+	DBG("Idle_PTs_init: early_random=0x%llx\n", rand64);
 	physmap_init(rand64 & 0xFF, &new_physmap_base, &new_physmap_max);
+	DBG("Idle_PTs_init: physmap_init done, base=0x%llx max=0x%llx\n", new_physmap_base, new_physmap_max);
 	doublemap_init((rand64 >> 8) & 0xFF);
+	DBG("Idle_PTs_init: doublemap_init done\n");
 	idt64_remap();
+	DBG("Idle_PTs_init: idt64_remap done\n");
 
 	postcode(VSTART_SET_CR3);
 
@@ -434,9 +445,11 @@ Idle_PTs_init(void)
 	 * ml_phys_read_data and PHYSMAP_PTOV, which requires physmap_base to be
 	 * set correctly.
 	 */
+	DBG("Idle_PTs_init: switching CR3 to %p\n", (void *)(uintptr_t)ID_MAP_VTOP(IdlePML4));
 	physmap_base = new_physmap_base;
 	physmap_max = new_physmap_max;
 	set_cr3_raw((uintptr_t)ID_MAP_VTOP(IdlePML4));
+	DBG("Idle_PTs_init: CR3 switch done\n");
 }
 
 /*
@@ -766,11 +779,15 @@ vstart(vm_offset_t boot_args_start)
 		kasan_reserve_memory(kernelBootArgs);
 #endif
 
+		DBG("vstart: calling PE_init_platform\n");
 		PE_init_platform(FALSE, kernelBootArgs);
 		postcode(PE_INIT_PLATFORM_D);
+		DBG("vstart: PE_init_platform done\n");
 
+		DBG("vstart: calling Idle_PTs_init\n");
 		Idle_PTs_init();
 		postcode(VSTART_IDLE_PTS_INIT);
+		DBG("vstart: Idle_PTs_init done\n");
 
 #if KASAN
 		/* Init kasan and map whatever was stolen from physfree */
@@ -783,18 +800,23 @@ vstart(vm_offset_t boot_args_start)
 #endif /* CONFIG_CPU_COUNTERS */
 
 		first_avail = (vm_offset_t)ID_MAP_VTOP(physfree);
+		DBG("vstart: first_avail=%p, calling cpu_data_alloc\n", (void *)first_avail);
 
 		cpu_data_alloc(TRUE);
+		DBG("vstart: cpu_data_alloc done\n");
 
 		cpu_desc_init(cpu_datap(0));
 		postcode(VSTART_CPU_DESC_INIT);
+		DBG("vstart: cpu_desc_init done\n");
 		cpu_desc_load(cpu_datap(0));
+		DBG("vstart: cpu_desc_load done\n");
 
 		postcode(VSTART_CPU_MODE_INIT);
 		cpu_syscall_init(cpu_datap(0)); /* cpu_syscall_init() will be
 		                                 * invoked on the APs
 		                                 * via i386_init_slave()
 		                                 */
+		DBG("vstart: cpu_syscall_init done\n");
 	} else {
 		/* Slave CPUs should use the basic IDT until i386_init_slave() */
 		vstart_idt_init(FALSE);
@@ -958,6 +980,10 @@ i386_init(void)
 	}
 
 	max_cpus_from_firmware = acpi_count_enabled_logical_processors();
+	if (max_cpus_from_firmware == 0) {
+		kprintf("acpi_count_enabled_logical_processors returned 0, defaulting to 1\n");
+		max_cpus_from_firmware = 1;
+	}
 
 	if (PE_parse_boot_argn("cpus", &cpus, sizeof(cpus))) {
 		if ((0 < cpus) && (cpus < max_ncpus)) {
