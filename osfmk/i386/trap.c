@@ -126,6 +126,8 @@ extern char panic_on_trap_procname[];
 extern uint32_t panic_on_trap_mask;
 #endif
 
+static int ignore_msrs = -1;
+
 extern int insn_copyin_count;
 
 /*
@@ -915,6 +917,38 @@ FALL_THROUGH:
 		if ((rp != NULL) || (rp = find_recovery_entry(kern_ip))) {
 			set_recovery_ip(saved_state, rp->recover_addr);
 			goto common_return;
+		}
+
+		/*
+		 * ignore_msrs boot-arg: silently skip faulting rdmsr/wrmsr
+		 * instructions instead of panicking.  Matches Linux KVM's
+		 * ignore_msrs=1 behaviour for running under emulators that
+		 * don't implement every model-specific register.
+		 */
+		if (__improbable(ignore_msrs == -1)) {
+			if (!PE_parse_boot_argn("ignore_msrs", &ignore_msrs,
+			    sizeof(ignore_msrs))) {
+				ignore_msrs = 0;
+			}
+		}
+		if (ignore_msrs) {
+			uint16_t insn = *(uint16_t *)kern_ip;
+			if (insn == 0x320F) {
+				/* rdmsr (0F 32): zero result, skip */
+				saved_state->rax = 0;
+				saved_state->rdx = 0;
+				saved_state->isf.rip += 2;
+				kprintf("ignore_msrs: rdmsr(0x%x) at %p\n",
+				    (uint32_t)saved_state->rcx, (void *)kern_ip);
+				goto common_return;
+			}
+			if (insn == 0x300F) {
+				/* wrmsr (0F 30): skip */
+				saved_state->isf.rip += 2;
+				kprintf("ignore_msrs: wrmsr(0x%x) at %p\n",
+				    (uint32_t)saved_state->rcx, (void *)kern_ip);
+				goto common_return;
+			}
 		}
 
 		/*
