@@ -1178,11 +1178,12 @@ kalloc_type_view_parse(const kalloc_type_variant_t type)
 			cur += ((kext_text_sz + (KEXT_ALIGN_BYTES - 1)) & (~KEXT_ALIGN_MASK));
 		}
 #endif /* __BUILDING_XNU_LIB_UNITTEST__ */
+	} else if (kc_format == KCFormatDynamic) {
+		kalloc_type_view_copy(type,
+		    kalloc_type_var(type, sec_start),
+		    kalloc_type_var(type, sec_end),
+		    &cur_count, false, NULL);
 	} else {
-		/*
-		 * When kc_format is KCFormatDynamic or KCFormatUnknown, we don't handle
-		 * parsing kalloc_type_view structs during startup.
-		 */
 		panic("kalloc_type_view_parse: couldn't parse kalloc_type_view structs"
 		    " for kc_format = %d\n", kc_format);
 	}
