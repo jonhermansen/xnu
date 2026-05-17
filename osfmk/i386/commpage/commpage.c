@@ -95,6 +95,8 @@ char    *commPageTextPtr64 = NULL;      // ...and of 64-bit commpage
 
 uint64_t     _cpu_capabilities = 0;     // define the capability vector
 
+static volatile int commpage_ready = 0;
+
 typedef uint32_t commpage_address_t;
 
 static commpage_address_t       next;   // next available address in comm page
@@ -617,6 +619,8 @@ commpage_populate( void )
 	commpage_mach_approximate_time_init();
 	commpage_mach_continuous_time_init();
 	commpage_boottime_init();
+
+	commpage_ready = 1;
 	rtc_nanotime_init_commpage();
 	commpage_update_kdebug_state();
 #if CONFIG_ATM
@@ -972,6 +976,10 @@ commpage_update_mach_approximate_time(uint64_t abstime)
 #ifdef CONFIG_MACH_APPROXIMATE_TIME
 	uint64_t saved_data;
 	char *cp;
+
+	if (!commpage_ready) {
+		return;
+	}
 
 	cp = commPagePtr32;
 	if (cp) {
