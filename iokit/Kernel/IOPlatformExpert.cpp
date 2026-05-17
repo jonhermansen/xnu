@@ -2335,6 +2335,56 @@ IOPlatformDevice::getResources( void )
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /*********************************************************************
+* IOQEMUPlatform class
+*
+* Minimal built-in platform expert for booting under QEMU without
+* external kexts.
+*********************************************************************/
+
+class IOQEMUPlatform : public IOPlatformExpert {
+	OSDeclareDefaultStructors(IOQEMUPlatform);
+
+public:
+	bool start(IOService * provider) APPLE_KEXT_OVERRIDE;
+	bool getModelName(char * name, int maxLength) APPLE_KEXT_OVERRIDE;
+	bool getMachineName(char * name, int maxLength) APPLE_KEXT_OVERRIDE;
+};
+
+OSDefineMetaClassAndStructors(IOQEMUPlatform, IOPlatformExpert);
+
+bool
+IOQEMUPlatform::start(IOService * provider)
+{
+	IOLog("IOQEMUPlatform::start\n");
+
+	if (!super::start(provider)) {
+		IOLog("IOQEMUPlatform::start - super::start failed\n");
+		return false;
+	}
+
+	ml_set_max_cpus(1);
+	IOLog("IOQEMUPlatform: ml_set_max_cpus(1) done\n");
+
+	registerService();
+	IOLog("IOQEMUPlatform::start - platform registered\n");
+	return true;
+}
+
+bool
+IOQEMUPlatform::getModelName(char * name, int maxLength)
+{
+	strlcpy(name, "QEMU-x86_64", maxLength);
+	return true;
+}
+
+bool
+IOQEMUPlatform::getMachineName(char * name, int maxLength)
+{
+	strlcpy(name, "PureDarwin-QEMU", maxLength);
+	return true;
+}
+
+/*********************************************************************
 * IOPanicPlatform class
 *
 * If no legitimate IOPlatformDevice matches, this one does and panics
