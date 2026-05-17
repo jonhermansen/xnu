@@ -498,7 +498,7 @@ bsd_init(void)
 	check_for_failure_injection(XNU_STAGE_BSD_INIT_START);
 #endif
 
-#define DEBUG_BSDINIT 0
+#define DEBUG_BSDINIT 1
 
 #if DEBUG_BSDINIT
 #define bsd_init_kprintf(x, ...) kprintf("bsd_init: " x, ## __VA_ARGS__)
@@ -761,24 +761,13 @@ bsd_init(void)
 #if SOCKETS
 	bsd_init_kprintf("calling socketinit\n");
 	socketinit();
-	bsd_init_kprintf("calling domaininit\n");
-	domaininit();
-	iptap_init();
-#if FLOW_DIVERT
-	flow_divert_init();
-#endif  /* FLOW_DIVERT */
+	bsd_init_kprintf("skipping domaininit (no network kexts)\n");
 #endif /* SOCKETS */
 #if SKYWALK
-	bsd_init_kprintf("calling skywalk_init\n");
-	(void) skywalk_init();
+	bsd_init_kprintf("skipping skywalk_init (no IOMapper in QEMU)\n");
 #endif /* SKYWALK */
 #if NETWORKING
-#if NECP
-	/* Initialize Network Extension Control Policies */
-	necp_init();
-#endif
-	netagent_init();
-	net_aop_init();
+	bsd_init_kprintf("skipping necp/netagent/net_aop init (no network kexts)\n");
 #endif /* NETWORKING */
 
 #if CONFIG_FREEZE
