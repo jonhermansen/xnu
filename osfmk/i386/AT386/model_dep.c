@@ -462,9 +462,13 @@ efi_init(void)
 				if (no_efi_rt) {
 					continue;
 				}
+				if (mptr->Type == EfiMemoryMappedIO || mptr->Type == EfiMemoryMappedIOPortSpace) {
+					kprintf(" Skipping MMIO region (GRUB does not remap these)\n");
+					continue;
+				}
 				pmap_map_bd(vm_addr, phys_addr, phys_addr + round_page(vm_size),
 				    (mptr->Type == kEfiRuntimeServicesCode) ? VM_PROT_READ | VM_PROT_EXECUTE : VM_PROT_READ | VM_PROT_WRITE,
-				    (mptr->Type == EfiMemoryMappedIO)       ? VM_WIMG_IO   : VM_WIMG_USE_DEFAULT);
+				    VM_WIMG_USE_DEFAULT);
 			}
 		}
 
