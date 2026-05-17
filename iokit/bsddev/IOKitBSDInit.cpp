@@ -703,12 +703,16 @@ IOFindBSDRoot( char * rootName, unsigned int rootNameSize,
 
 	int xchar, dchar;
 
+	IOLog("IOFindBSDRoot: entered\n");
+
 	// stall here for anyone matching on the IOBSD resource to finish (filesystems)
 	matching = IOService::serviceMatching(gIOResourcesKey);
 	assert(matching);
 	matching->setObject(gIOResourceMatchedKey, gIOBSDKey);
 
+	IOLog("IOFindBSDRoot: waiting for IOBSD resource...\n");
 	if ((service = IOService::waitForMatchingService(matching, 30ULL * kSecondScale))) {
+		IOLog("IOFindBSDRoot: IOBSD resource found\n");
 		OSSafeReleaseNULL(service);
 	} else {
 		IOLog("!BSD\n");
@@ -731,6 +735,7 @@ IOFindBSDRoot( char * rootName, unsigned int rootNameSize,
 	    && !PE_parse_boot_argn("rootdev", rdBootVar, kMaxBootVar )) {
 		rdBootVar[0] = 0;
 	}
+	IOLog("IOFindBSDRoot: rd='%s'\n", rdBootVar[0] ? rdBootVar : "(none)");
 
 	if ((regEntry = IORegistryEntry::fromPath( "/chosen", gIODTPlane ))) {
 		do {
@@ -776,6 +781,7 @@ IOFindBSDRoot( char * rootName, unsigned int rootNameSize,
 		didRam = 1;                                                                                             /* Remember we did this */
 		if ((regEntry = IORegistryEntry::fromPath( "/chosen/memory-map", gIODTPlane ))) {        /* Find the map node */
 			data = (OSData *)regEntry->getProperty("RAMDisk");      /* Find the ram disk, if there */
+			IOLog("IOFindBSDRoot: /chosen/memory-map found, RAMDisk property %s\n", data ? "present" : "MISSING");
 			if (data) {                                                                                      /* We found one */
 				uintptr_t *ramdParms;
 				/* BEGIN IGNORE CODESTYLE */
@@ -789,6 +795,9 @@ IOFindBSDRoot( char * rootName, unsigned int rootNameSize,
 					panic("ramdisk params");
 				}
 #endif /* __LP64__ */
+				IOLog("IOFindBSDRoot: RAMDisk base=0x%lx size=0x%lx va=0x%lx\n",
+				    (unsigned long)ramdParms[0], (unsigned long)ramdParms[1],
+				    (unsigned long)ml_static_ptovirt(ramdParms[0]));
 				(void)mdevadd(-1, ml_static_ptovirt(ramdParms[0]) >> 12, (unsigned int) (ramdParms[1] >> 12), 0);        /* Initialize it and pass back the device number */
 			}
 			regEntry->release();                                                            /* Toss the entry */
@@ -815,6 +824,7 @@ IOFindBSDRoot( char * rootName, unsigned int rootNameSize,
 		if (xchar >= 0) {                                                                                /* Do we have a valid memory device name? */
 			OSSafeReleaseNULL(matching);
 			*root = mdevlookup(xchar);                                                      /* Find the device number */
+			IOLog("IOFindBSDRoot: rd=md%c, mdevlookup(%d) returned 0x%x\n", (char)dchar, xchar, (unsigned)*root);
 			if (*root >= 0) {                                                                        /* Did we find one? */
 				rootName[0] = 'm';                                                              /* Build root name */
 				rootName[1] = 'd';                                                              /* Build root name */
