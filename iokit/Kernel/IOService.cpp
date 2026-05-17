@@ -5396,7 +5396,13 @@ IOService::publishHiddenMedia(IOService * parent)
 	bool                wasHiding;
 
 	iomediaClass = OSMetaClass::getMetaClassWithName(gIOMediaKey);
-	assert(iomediaClass);
+	if (!iomediaClass) {
+		IOLog("publishHiddenMedia: IOMedia class not found, skipping\n");
+		LOCKWRITENOTIFY();
+		gIOServiceHideIOMedia = false;
+		UNLOCKNOTIFY();
+		return;
+	}
 
 	LOCKWRITENOTIFY();
 	wasHiding = gIOServiceHideIOMedia;
@@ -5449,13 +5455,16 @@ IOService::setRootMedia(IOService * root)
 	bool unhide;
 
 	ioblockstoragedriverClass = OSMetaClass::getMetaClassWithName(gIOBlockStorageDriverKey);
-	assert(ioblockstoragedriverClass);
-
-	while (root) {
-		if (root->metaCast(ioblockstoragedriverClass)) {
-			break;
+	if (!ioblockstoragedriverClass) {
+		IOLog("setRootMedia: IOBlockStorageDriver class not found, skipping media walk\n");
+		root = NULL;
+	} else {
+		while (root) {
+			if (root->metaCast(ioblockstoragedriverClass)) {
+				break;
+			}
+			root = root->getProvider();
 		}
-		root = root->getProvider();
 	}
 
 	LOCKWRITENOTIFY();
