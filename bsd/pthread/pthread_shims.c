@@ -316,7 +316,8 @@ void
 pthread_init(void)
 {
 	if (!pthread_functions) {
-		panic("pthread kernel extension not loaded (function table is NULL).");
+		printf("pthread_init: pthread kext not loaded, skipping\n");
+		return;
 	}
 	pthread_functions->pthread_init();
 }
@@ -324,6 +325,9 @@ pthread_init(void)
 void
 pth_proc_hashinit(proc_t p)
 {
+	if (!pthread_functions) {
+		return;
+	}
 	pthread_functions->pth_proc_hashinit(p);
 }
 
