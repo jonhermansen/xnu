@@ -8607,6 +8607,13 @@ process_signature(proc_t p, struct image_params *imgp)
 	const int vfexec = 0;
 	os_reason_t signature_failure_reason = OS_REASON_NULL;
 
+	if (!cs_process_global_enforcement()) {
+		proc_lock(p);
+		proc_csflags_update(p, imgp->ip_csflags);
+		proc_unlock(p);
+		return 0;
+	}
+
 	/*
 	 * Override inherited code signing flags with the
 	 * ones for the process that is being successfully

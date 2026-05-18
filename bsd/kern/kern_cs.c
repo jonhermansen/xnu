@@ -166,9 +166,12 @@ cs_init(void)
 	int disable_cs_enforcement = 0;
 	PE_parse_boot_argn("cs_enforcement_disable", &disable_cs_enforcement,
 	    sizeof(disable_cs_enforcement));
+	printf("cs_init: disable_cs_enforcement=%d PE_i_can_has_debugger=%d\n",
+	    disable_cs_enforcement, PE_i_can_has_debugger(NULL));
 	if (disable_cs_enforcement && PE_i_can_has_debugger(NULL) != 0) {
 		cs_system_enforcement_enable = 0;
 		cs_process_enforcement_enable = 0;
+		printf("cs_init: code signing enforcement DISABLED\n");
 	} else {
 		int panic = 0;
 		PE_parse_boot_argn("cs_enforcement_panic", &panic, sizeof(panic));

@@ -1753,6 +1753,10 @@ parse_machfile(
 				if (pass != 1) {
 					break;
 				}
+				/* Skip code sig validation when enforcement is off (avoids corecrypto NULL deref) */
+				if (!cs_process_global_enforcement()) {
+					break;
+				}
 
 				/* pager -> uip ->
 				 *  load signatures & store in uip
