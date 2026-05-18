@@ -990,7 +990,11 @@ bank_task_alloc_init(task_t task)
 	new_bank_task->bt_uid = proc_getuid(bsd_info);
 	new_bank_task->bt_gid = proc_getgid(bsd_info);
 #if CONFIG_THREAD_GROUPS
-	new_bank_task->bt_thread_group = thread_group_retain(task_coalition_get_thread_group(task));
+	if (task->coalition[COALITION_TYPE_JETSAM] != COALITION_NULL) {
+		new_bank_task->bt_thread_group = thread_group_retain(task_coalition_get_thread_group(task));
+	} else {
+		new_bank_task->bt_thread_group = NULL;
+	}
 #endif /* CONFIG_THREAD_GROUPS */
 #if CONFIG_COALITIONS
 	coalition_t rsrc_coal = task->coalition[COALITION_TYPE_RESOURCE];
