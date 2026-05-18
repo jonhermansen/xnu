@@ -386,7 +386,7 @@ PE_i_can_has_debugger(uint32_t *debug_flags)
 	}
 #endif
 
-#if CONFIG_CSR
+#if CONFIG_CSR && !DEVELOPMENT
 	if (csr_check(CSR_ALLOW_KERNEL_DEBUGGER) != 0) {
 		if (debug_flags) {
 			*debug_flags = 0;
