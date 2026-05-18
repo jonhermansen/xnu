@@ -1585,7 +1585,7 @@ IOTaskHasStringEntitlement(task_t task, const char *entitlement, const char *val
 	}
 
 	/* Validate input arguments */
-	if (task == kernel_task || entitlement == NULL || value == NULL) {
+	if (task == kernel_task || entitlement == NULL || value == NULL || amfi == NULL) {
 		return false;
 	}
 	proc_t proc = (proc_t)get_bsdtask_info(task);
@@ -1628,7 +1628,7 @@ IOTaskHasEntitlement(task_t task, const char *entitlement)
 	}
 
 	/* Validate input arguments */
-	if (task == kernel_task || entitlement == NULL) {
+	if (task == kernel_task || entitlement == NULL || amfi == NULL) {
 		return false;
 	}
 	proc_t proc = (proc_t)get_bsdtask_info(task);
@@ -1658,7 +1658,7 @@ IOTaskGetIntegerEntitlement(task_t task, const char *entitlement, uint64_t *valu
 	}
 
 	/* Validate input arguments */
-	if (task == kernel_task || entitlement == NULL || value == NULL) {
+	if (task == kernel_task || entitlement == NULL || value == NULL || amfi == NULL) {
 		return false;
 	}
 	proc_t proc = (proc_t)get_bsdtask_info(task);
@@ -1708,7 +1708,7 @@ IOTaskGetEntitlement(task_t task, const char *entitlement)
 	}
 
 	/* Validate input arguments */
-	if (task == kernel_task || entitlement == NULL) {
+	if (task == kernel_task || entitlement == NULL || amfi == NULL) {
 		return NULL;
 	}
 	proc_t proc = (proc_t)get_bsdtask_info(task);
@@ -1747,7 +1747,7 @@ IOTaskHasEntitlementAsBooleanOrObject(task_t task, const char *entitlement)
 	}
 
 	/* Validate input arguments */
-	if (task == kernel_task || entitlement == NULL) {
+	if (task == kernel_task || entitlement == NULL || amfi == NULL) {
 		return false;
 	}
 	proc_t proc = (proc_t)get_bsdtask_info(task);
