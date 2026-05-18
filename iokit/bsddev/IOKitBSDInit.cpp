@@ -782,23 +782,29 @@ IOFindBSDRoot( char * rootName, unsigned int rootNameSize,
 		if ((regEntry = IORegistryEntry::fromPath( "/chosen/memory-map", gIODTPlane ))) {        /* Find the map node */
 			data = (OSData *)regEntry->getProperty("RAMDisk");      /* Find the ram disk, if there */
 			IOLog("IOFindBSDRoot: /chosen/memory-map found, RAMDisk property %s\n", data ? "present" : "MISSING");
-			if (data) {                                                                                      /* We found one */
-				uintptr_t *ramdParms;
-				/* BEGIN IGNORE CODESTYLE */
-				__typed_allocators_ignore_push
-				ramdParms = (uintptr_t *)data->getBytesNoCopy();        /* Point to the ram disk base and size */
-				__typed_allocators_ignore_pop
-				/* END IGNORE CODESTYLE */
-#if __LP64__
-#define MAX_PHYS_RAM    (((uint64_t)UINT_MAX) << 12)
-				if (ramdParms[1] > MAX_PHYS_RAM) {
-					panic("ramdisk params");
+			if (data) {
+				uint64_t ramdBase, ramdSize;
+				unsigned int propLen = data->getLength();
+				const void *propBytes = data->getBytesNoCopy();
+
+				if (propLen == 2 * sizeof(uint32_t)) {
+					const uint32_t *p32 = (const uint32_t *)propBytes;
+					ramdBase = p32[0];
+					ramdSize = p32[1];
+				} else {
+					const uintptr_t *pN = (const uintptr_t *)propBytes;
+					ramdBase = pN[0];
+					ramdSize = pN[1];
 				}
-#endif /* __LP64__ */
-				IOLog("IOFindBSDRoot: RAMDisk base=0x%lx size=0x%lx va=0x%lx\n",
-				    (unsigned long)ramdParms[0], (unsigned long)ramdParms[1],
-				    (unsigned long)ml_static_ptovirt(ramdParms[0]));
-				(void)mdevadd(-1, ml_static_ptovirt(ramdParms[0]) >> 12, (unsigned int) (ramdParms[1] >> 12), 0);        /* Initialize it and pass back the device number */
+				IOLog("IOFindBSDRoot: RAMDisk propLen=%u base=0x%llx size=0x%llx\n",
+				    propLen, ramdBase, ramdSize);
+				if (ramdSize > 0) {
+					/* Round up to pages so trailing bytes aren't lost */
+					(void)mdevadd(-1, ml_static_ptovirt((vm_offset_t)ramdBase) >> 12,
+					    (unsigned int)((ramdSize + 4095) >> 12), 0);
+				} else {
+					IOLog("IOFindBSDRoot: RAMDisk size is 0, skipping mdevadd\n");
+				}
 			}
 			regEntry->release();                                                            /* Toss the entry */
 		}
