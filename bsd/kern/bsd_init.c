@@ -81,6 +81,8 @@
 
 #include <sys/param.h>
 #include <sys/filedesc.h>
+#include <sys/fcntl.h>
+#include <sys/uio_internal.h>
 #include <sys/kernel.h>
 #include <sys/mount_internal.h>
 #include <sys/proc_internal.h>
@@ -1093,6 +1095,29 @@ bsdinit_task(void)
 #endif
 
 	bsd_init_kprintf("bsd_do_post - done");
+
+	/* Open /dev/console as stdin/stdout/stderr for pid 1 */
+	{
+		extern int open1(vfs_context_t, struct nameidata *, int,
+		    struct vnode_attr *, fp_initfn_t, void *, int32_t *, int);
+		extern int dup2(proc_t, kauth_cred_t, int, int, int *);
+		struct vnode_attr va;
+		struct nameidata nd;
+		int fd = -1, ret;
+
+		VATTR_INIT(&va);
+		NDINIT(&nd, LOOKUP, OP_OPEN, FOLLOW, UIO_SYSSPACE,
+		    CAST_USER_ADDR_T("/dev/console"), vfs_context_current());
+		int error = open1(vfs_context_current(), &nd,
+		    FREAD | FWRITE, &va, NULL, NULL, &fd, 0);
+		if (error == 0) {
+			dup2(p, kauth_cred_get(), fd, 1, &ret);
+			dup2(p, kauth_cred_get(), fd, 2, &ret);
+			printf("bsdinit_task: opened /dev/console as fd %d\n", fd);
+		} else {
+			printf("bsdinit_task: failed to open /dev/console: %d\n", error);
+		}
+	}
 
 	load_init_program(p);
 	lock_trace = 1;
