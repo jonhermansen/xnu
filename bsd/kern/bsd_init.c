@@ -1075,8 +1075,8 @@ bsdinit_task(void)
 
 	process_name("init", p);
 
-	/* Set up exception-to-signal reflection */
-	ux_handler_setup();
+	/* Set up exception-to-signal reflection (skip: needs MACF labels) */
+	/* ux_handler_setup(); */
 
 #if CONFIG_MACF
 	mac_cred_label_associate_user(proc_ucred_unsafe(p)); /* in init */

@@ -334,6 +334,9 @@ pth_proc_hashinit(proc_t p)
 void
 pth_proc_hashdelete(proc_t p)
 {
+	if (!pthread_functions) {
+		return;
+	}
 	pthread_functions->pth_proc_hashdelete(p);
 }
 

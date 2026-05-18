@@ -93,6 +93,7 @@
 
 #include <libkern/OSDebug.h>
 #include <libkern/crypto/sha2.h>
+#include <libkern/crypto/crypto_internal.h>
 #include <libkern/section_keywords.h>
 #include <sys/kdebug.h>
 #include <sys/kdebug_triage.h>
@@ -3534,6 +3535,11 @@ vm_kernel_addrhash_internal(vm_offset_t addr, uint64_t salt)
 	 */
 #endif /* HAS_MTE */
 	addr = VM_KERNEL_STRIP_PTR(addr);
+
+	extern crypto_functions_t g_crypto_funcs;
+	if (!g_crypto_funcs) {
+		return addr ^ salt;
+	}
 
 	vm_offset_t sha_digest[SHA256_DIGEST_LENGTH / sizeof(vm_offset_t)];
 	SHA256_CTX sha_ctx;
