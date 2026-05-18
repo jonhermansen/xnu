@@ -450,7 +450,7 @@ mdevioctl(dev_t dev, u_long cmd, caddr_t data, __unused int flag,
 		}
 		memdev_info->mi_mdev = TRUE;
 		memdev_info->mi_phys = (mdev[devid].mdFlags & mdPhys) ? TRUE : FALSE;
-		memdev_info->mi_base = (uint32_t)mdev[devid].mdBase;
+		memdev_info->mi_base = mdev[devid].mdBase;
 		memdev_info->mi_size = mdev[devid].mdSize;
 		break;
 
