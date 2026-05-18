@@ -755,6 +755,8 @@ load_machfile(
 
 	if (os_add_overflow(file_offset, macho_size, &total_size) ||
 	    total_size > file_size) {
+		printf("load_machfile: size check failed file_offset=%lld macho_size=%lld total_size=%lld file_size=%lld\n",
+		    file_offset, macho_size, total_size, file_size);
 		return LOAD_BADMACHO;
 	}
 
@@ -876,6 +878,8 @@ load_machfile(
 	    NULL, imgp);
 
 	if (lret != LOAD_SUCCESS) {
+		printf("load_machfile: parse_machfile failed lret=%d file_offset=%lld macho_size=%lld file_size=%lld\n",
+		    lret, file_offset, macho_size, file_size);
 		imgp->ip_free_map = map;
 		return lret;
 	}
@@ -1072,6 +1076,7 @@ load_machfile(
 		} else
 #endif /* __arm64__ */
 		{
+			printf("load_machfile: PAGEZERO check failed enforce=%d\n", enforce_hard_pagezero);
 			imgp->ip_free_map = map;
 			return LOAD_BADMACHO;
 		}

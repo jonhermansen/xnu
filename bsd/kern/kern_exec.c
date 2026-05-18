@@ -2082,6 +2082,7 @@ grade:
 	 */
 	lret = load_machfile(imgp, mach_header, thread, &map, &load_result);
 	if (lret != LOAD_SUCCESS) {
+		printf("exec_mach_imgact: load_machfile failed lret=%d for pid %d\n", lret, proc_getpid(p));
 		error = load_return_to_errno(lret);
 
 		KERNEL_DEBUG_CONSTANT(BSDDBG_CODE(DBG_BSD_PROC, BSD_PROC_EXITREASON_CREATE) | DBG_FUNC_NONE,
@@ -2152,6 +2153,7 @@ grade:
 	 * Setup runtime mitigations.
 	 */
 	if ((error = imgact_setup_runtime_mitigations(imgp, &load_result, current_task(), new_task, map, p)) != 0) {
+		printf("exec_mach_imgact: imgact_setup_runtime_mitigations failed error=%d for pid %d\n", error, proc_getpid(p));
 		set_proc_name(imgp, p);
 		exec_failure_reason = os_reason_create(OS_REASON_EXEC, EXEC_EXIT_REASON_BAD_MACHO);
 		if (bootarg_execfailurereports) {
