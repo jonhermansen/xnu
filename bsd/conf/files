@@ -192,6 +192,8 @@ bsd/hfs/MacOSStubs.c			optional hfs
 bsd/hfs/rangelist.c			optional hfs
 bsd/hfs/UnicodeWrappers.c		optional hfs
 bsd/hfs/VolumeAllocation.c		optional hfs
+bsd/hfs_encodings/hfs_encodings.c	optional hfs
+bsd/hfs_encodings/hfs_encodinghint.c	optional hfs
 
 bsd/miscfs/routefs/routefs_ops.c	optional routefs
 
