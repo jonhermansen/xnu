@@ -112,6 +112,8 @@ options		CONFIG_WORKLOOP_DEBUG	# <config_workloop_debug>
 #	4.4 filesystems
 #
 options		HFS		# HFS/HFS+ support		# <hfs>
+options		HFS_COMPRESSION	# HFS transparent compression	# <hfs>
+options		CONFIG_HFS_DIRLINK # HFS directory hardlinks	# <hfs>
 options		MOCKFS		# Boot from an executable	# <mockfs>
 options		FIFO		# fifo support			# <fifo>
 options		FDESC		# fdesc_fs support		# <fdesc>
