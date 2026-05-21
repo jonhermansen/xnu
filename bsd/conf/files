@@ -172,6 +172,7 @@ bsd/hfs/hfs_btreeio.c			optional hfs
 bsd/hfs/hfs_catalog.c			optional hfs
 bsd/hfs/hfs_chash.c			optional hfs
 bsd/hfs/hfs_cnode.c			optional hfs
+bsd/hfs/hfs_cprotect.c			optional hfs
 bsd/hfs/hfs_endian.c			optional hfs
 bsd/hfs/hfs_extents.c			optional hfs
 bsd/hfs/hfs_fsinfo.c			optional hfs
