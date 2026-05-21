@@ -91,6 +91,7 @@ int (*mountroot)(void) = NULL;
  */
 extern  struct vfsops mfs_vfsops;
 extern  int mfs_mountroot(mount_t, vnode_t, vfs_context_t);     /* dead */
+extern  const struct vfsops hfs_vfsops;
 extern  struct vfsops afs_vfsops;
 extern  struct vfsops null_vfsops;
 extern  struct vfsops devfs_vfsops;
@@ -104,6 +105,7 @@ extern  int mockfs_mountroot(mount_t, vnode_t, vfs_context_t);
 #endif /* MOCKFS */
 
 enum fs_type_num {
+	FT_HFS = 17,
 	FT_DEVFS = 19,
 	FT_SYNTHFS = 20,
 	FT_ROUTEFS = 21,
@@ -117,6 +119,25 @@ int fstypenumstart = FT_BINDFS + 1;
  * Set up the filesystem operations for vnodes.
  */
 static struct vfstable vfstbllist[] = {
+	/* HFS/HFS+ Filesystem */
+#if HFS
+	{
+		.vfc_vfsops = &hfs_vfsops,
+		.vfc_name = "hfs",
+		.vfc_typenum = FT_HFS,
+		.vfc_refcount = 0,
+		.vfc_flags = MNT_LOCAL | MNT_DOVOLFS,
+		.vfc_mountroot = NULL,
+		.vfc_next = NULL,
+		.vfc_reserved1 = 0,
+		.vfc_reserved2 = 0,
+		.vfc_vfsflags = VFC_VFSLOCALARGS | VFC_VFSREADDIR_EXTENDED | VFC_VFS64BITREADY | VFC_VFSVNOP_PAGEOUTV2 | VFC_VFSVNOP_PAGEINV2,
+		.vfc_descptr = NULL,
+		.vfc_descsize = 0,
+		.vfc_sysctl = NULL
+	},
+#endif /* HFS */
+
 	/* Device Filesystem */
 #if DEVFS
 #if CONFIG_MACF
@@ -297,6 +318,14 @@ extern const struct vnodeopv_desc devfs_fdesc_vnodeop_opv_desc;
 extern const struct vnodeopv_desc mockfs_vnodeop_opv_desc;
 #endif /* MOCKFS */
 
+#if HFS
+extern const struct vnodeopv_desc hfs_vnodeop_opv_desc;
+extern const struct vnodeopv_desc hfs_specop_opv_desc;
+#if FIFO
+extern const struct vnodeopv_desc hfs_fifoop_opv_desc;
+#endif /* FIFO */
+#endif /* HFS */
+
 extern const struct vnodeopv_desc nullfs_vnodeop_opv_desc;
 extern const struct vnodeopv_desc bindfs_vnodeop_opv_desc;
 
@@ -317,6 +346,13 @@ const struct vnodeopv_desc *vfs_opv_descs[] = {
 	&devfs_fdesc_vnodeop_opv_desc,
 #endif /* FDESC */
 #endif /* DEVFS */
+#if HFS
+	&hfs_vnodeop_opv_desc,
+	&hfs_specop_opv_desc,
+#if FIFO
+	&hfs_fifoop_opv_desc,
+#endif /* FIFO */
+#endif /* HFS */
 #if NULLFS
 	&nullfs_vnodeop_opv_desc,
 #endif /* NULLFS */

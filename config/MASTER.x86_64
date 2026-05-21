@@ -26,7 +26,7 @@
 #  BSD_DEBUG =      [ BSD_BASE config_vnguard ]
 #  FILESYS_BASE =   [ devfs fdesc config_dev_kmem config_fse quota namedstreams config_mnt_rootsnap config_rosv_startup config_mount_vm config_mount_prebootrecovery config_basesystemroot config_keypage_wp config_protect fifo config_volfs fs_compression config_imgsrc_access config_triggers config_ext_resolver config_searchfs config_appledouble nullfs config_mnt_suid config_firmlinks config_dataless_files config_union_mounts bindfs config_file_leases]
 #  FILESYS_RELEASE= [ FILESYS_BASE ]
-#  FILESYS_DEV =    [ FILESYS_BASE config_iocount_trace mockfs ]
+#  FILESYS_DEV =    [ FILESYS_BASE config_iocount_trace mockfs hfs ]
 #  FILESYS_DEBUG =  [ FILESYS_BASE config_iocount_trace ]
 #  NFS =            [ nfsserver ]
 #  SKYWALK_BASE =   [ skywalk config_nexus_user_pipe config_nexus_kernel_pipe config_nexus_flowswitch config_nexus_netif ]
