@@ -1109,7 +1109,7 @@ bsdinit_task(void)
 		NDINIT(&nd, LOOKUP, OP_OPEN, FOLLOW, UIO_SYSSPACE,
 		    CAST_USER_ADDR_T("/dev/console"), vfs_context_current());
 		int error = open1(vfs_context_current(), &nd,
-		    FREAD | FWRITE, &va, NULL, NULL, &fd, 0);
+		    O_RDWR, &va, NULL, NULL, &fd, 0);
 		if (error == 0) {
 			dup2(p, kauth_cred_get(), fd, 1, &ret);
 			dup2(p, kauth_cred_get(), fd, 2, &ret);
