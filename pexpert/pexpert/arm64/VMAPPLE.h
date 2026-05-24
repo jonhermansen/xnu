@@ -31,13 +31,12 @@
 
 #define NO_MONITOR                1
 #define NO_ECORE                  1
-#define HAS_PARAVIRTUALIZED_CTRR  0
+#define NO_CPU_OVRD               1
 
 #define VMAPPLE                   1
 #define APPLEVIRTUALPLATFORM      1
 
 #define CPU_HAS_APPLE_PAC         1
-#define HAS_PARAVIRTUALIZED_PAC   0
 #define HAS_GIC_V3                1
 #define HAS_ARM_FEAT_SSBS2        1
 #define HAS_ARM_FEAT_SME          1
