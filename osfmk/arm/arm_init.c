@@ -285,11 +285,15 @@ arm_slide_rebase_and_sign_image(void)
 		slide = (uintptr_t)k_mh - VM_KERNEL_LINK_ADDRESS;
 
 		/* rebase and sign jops */
-		static_kernelcache = &__thread_starts_sect_end[0] != &__thread_starts_sect_start[0];
-		if (static_kernelcache) {
-			rebase_threaded_starts( &__thread_starts_sect_start[0],
-			    &__thread_starts_sect_end[0],
-			    (uintptr_t)k_mh, (uintptr_t)k_mh - slide, slide);
+		if (!rebase_chained_fixups(k_mh, slide)) {
+			static_kernelcache = &__thread_starts_sect_end[0] != &__thread_starts_sect_start[0];
+			if (static_kernelcache) {
+				rebase_threaded_starts( &__thread_starts_sect_start[0],
+				    &__thread_starts_sect_end[0],
+				    (uintptr_t)k_mh, (uintptr_t)k_mh - slide, slide);
+			}
+		} else {
+			static_kernelcache = true;
 		}
 #if defined(HAS_APPLE_PAC)
 		OSRuntimeSignStructors(&_mh_execute_header);

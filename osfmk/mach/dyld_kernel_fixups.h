@@ -608,3 +608,119 @@ rebase_threaded_starts(uint32_t *threadArrayStart, uint32_t *threadArrayEnd,
 	}
 	return true;
 }
+
+/*
+ * Rebaser for LC_DYLD_CHAINED_FIXUPS (DYLD_CHAINED_PTR_ARM64E_KERNEL).
+ * Handles the same pointer auth signing as rebase_chain above.
+ */
+static bool __unused
+rebase_chained_fixups(kernel_mach_header_t *header, uintptr_t slide)
+{
+	struct linkedit_data_command *fixups_cmd = NULL;
+	kernel_segment_command_t *linkedit_seg = NULL;
+	struct load_command *lc = (struct load_command *)((uintptr_t)header + sizeof(*header));
+	for (uint32_t i = 0; i < header->ncmds; i++) {
+		if (lc->cmd == LC_DYLD_CHAINED_FIXUPS) {
+			fixups_cmd = (struct linkedit_data_command *)lc;
+		} else if (lc->cmd == LC_SEGMENT_KERNEL) {
+			kernel_segment_command_t *seg = (kernel_segment_command_t *)lc;
+			if (strings_are_equal(seg->segname, "__LINKEDIT")) {
+				linkedit_seg = seg;
+			}
+		}
+		lc = (struct load_command *)((uintptr_t)lc + lc->cmdsize);
+	}
+	if (!fixups_cmd || fixups_cmd->datasize == 0 || !linkedit_seg) {
+		return false;
+	}
+
+	uint8_t *fixdata = (uint8_t *)(linkedit_seg->vmaddr + slide +
+	    (fixups_cmd->dataoff - linkedit_seg->fileoff));
+	struct dyld_chained_fixups_header *fh = (struct dyld_chained_fixups_header *)fixdata;
+	struct dyld_chained_starts_in_image *si =
+	    (struct dyld_chained_starts_in_image *)(fixdata + fh->starts_offset);
+
+	uintptr_t base = (uintptr_t)header;
+
+	for (uint32_t seg = 0; seg < si->seg_count; seg++) {
+		if (si->seg_info_offset[seg] == 0) {
+			continue;
+		}
+		struct dyld_chained_starts_in_segment *ss =
+		    (struct dyld_chained_starts_in_segment *)
+		    ((uint8_t *)si + si->seg_info_offset[seg]);
+
+		if (ss->pointer_format != DYLD_CHAINED_PTR_ARM64E_KERNEL) {
+			continue;
+		}
+
+		for (uint16_t page = 0; page < ss->page_count; page++) {
+			uint16_t ps = ss->page_start[page];
+			if (ps == DYLD_CHAINED_PTR_START_NONE) {
+				continue;
+			}
+
+			uintptr_t addr = base + (uintptr_t)ss->segment_offset +
+			    (uintptr_t)page * ss->page_size + ps;
+
+			while (1) {
+				uint64_t raw = *(uint64_t *)addr;
+				bool auth = (raw >> 63) & 1;
+				bool bind = (raw >> 62) & 1;
+				uint64_t next = (raw >> 51) & 0x7FF;
+
+				if (bind) {
+					goto advance;
+				}
+
+				if (auth) {
+					uint32_t target = (uint32_t)(raw & 0xFFFFFFFF);
+					uint16_t diversity = (uint16_t)((raw >> 32) & 0xFFFF);
+					bool hasAddrDiv = (raw >> 48) & 1;
+					ptrauth_key key = (ptrauth_key)((raw >> 49) & 0x3);
+					uint64_t newValue = base + target;
+#if HAS_APPLE_PAC
+					uintptr_t disc = diversity;
+					if (hasAddrDiv) {
+						disc = disc ?
+						    __builtin_ptrauth_blend_discriminator(
+						        (void *)addr, disc) :
+						    addr;
+					}
+					switch (key) {
+					case ptrauth_key_asia:
+						newValue = (uintptr_t)__builtin_ptrauth_sign_unauthenticated(
+						    (void *)newValue, ptrauth_key_asia, disc);
+						break;
+					case ptrauth_key_asib:
+						newValue = (uintptr_t)__builtin_ptrauth_sign_unauthenticated(
+						    (void *)newValue, ptrauth_key_asib, disc);
+						break;
+					case ptrauth_key_asda:
+						newValue = (uintptr_t)__builtin_ptrauth_sign_unauthenticated(
+						    (void *)newValue, ptrauth_key_asda, disc);
+						break;
+					case ptrauth_key_asdb:
+						newValue = (uintptr_t)__builtin_ptrauth_sign_unauthenticated(
+						    (void *)newValue, ptrauth_key_asdb, disc);
+						break;
+					}
+#endif
+					*(uint64_t *)addr = newValue;
+				} else {
+					uint64_t target = raw & 0x7FFFFFFFFFFUL;
+					uint64_t high8 = (raw >> 43) & 0xFF;
+					uint64_t newValue = base + target;
+					newValue |= (high8 << 56);
+					*(uint64_t *)addr = newValue;
+				}
+advance:
+				if (next == 0) {
+					break;
+				}
+				addr += next * 4;
+			}
+		}
+	}
+	return true;
+}

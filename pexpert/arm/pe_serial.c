@@ -902,8 +902,21 @@ serial_init(void)
 	soc_base = pe_arm_get_soc_base_phys();
 
 	if (soc_base == 0) {
+#if defined(PL011_UART) && APPLEVIRTUALPLATFORM
+		pl011_registers = (pl011_registers_t *)ml_io_map(0x09000000, 0x1000);
+		register_serial_functions(&pl011_uart_serial_functions);
+		fns = gPESF;
+		while (fns != NULL) {
+			serial_do_transmit = 1;
+			fns->init();
+			fns = fns->next;
+		}
+		uart_initted = true;
+		return gPESF != NULL;
+#else
 		uart_initted = true;
 		return 0;
+#endif
 	}
 
 	PE_parse_boot_argn("disable-uart-irq", &disable_uart_irq, sizeof(disable_uart_irq));
