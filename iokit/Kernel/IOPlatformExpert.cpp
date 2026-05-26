@@ -2334,6 +2334,9 @@ IOPlatformDevice::getResources( void )
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#undef super
+#define super IOPlatformExpert
+
 /*********************************************************************
 * IOQEMUPlatform class
 *
