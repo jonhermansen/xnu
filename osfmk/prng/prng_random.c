@@ -228,10 +228,20 @@ early_random_init(void)
 	uint64_t nonce;
 	int rc;
 	const char ps[] = "xnu early random";
+	int fixed_entropy = 0;
+
+	PE_parse_boot_argn("fixed_entropy", &fixed_entropy, sizeof(fixed_entropy));
 
 	kprintf("early_random_init: calling bootseed_init\n");
 	bootseed_init();
 	kprintf("early_random_init: bootseed_init done\n");
+
+	if (fixed_entropy) {
+		kprintf("early_random_init: fixed_entropy=1, zeroing seed and nonce\n");
+		cc_clear(sizeof(earlyseed), earlyseed);
+		cc_clear(sizeof(kprngseed), kprngseed);
+		cc_clear(sizeof(entropyseed), entropyseed);
+	}
 
 	/* Init DRBG for NIST HMAC */
 	kprintf("early_random_init: calling ccdrbg_factory_nisthmac\n");
@@ -244,7 +254,7 @@ early_random_init(void)
 	 * and the cpu number as personalization.
 	 */
 	assert3u(sizeof(earlyseed), >, sizeof(nonce));
-	nonce = ml_get_timebase();
+	nonce = fixed_entropy ? 0 : ml_get_timebase();
 	kprintf("early_random_init: calling ccdrbg_init, nonce=0x%llx\n", nonce);
 	rc = ccdrbg_init(&erandom.drbg_info, (struct ccdrbg_state *)erandom.drbg_state, sizeof(earlyseed), earlyseed, sizeof(nonce), &nonce, sizeof(ps) - 1, ps);
 	kprintf("early_random_init: ccdrbg_init returned %d\n", rc);
